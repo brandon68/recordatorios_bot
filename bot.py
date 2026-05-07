@@ -16,7 +16,7 @@ nest_asyncio.apply()
 # CONFIG
 # =========================
 
-TOKEN = "7558324464:AAHmy9lu3wXOf9kq_jN6ym1W8peY--2sSl0"
+TOKEN = "7119344534:AAFJP-0BM9OvIoo_bw2RDB5nfm0HVGBKKxQ"
 CSV_FILE = "clientes.csv"
 
 # =========================
