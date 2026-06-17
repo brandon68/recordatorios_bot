@@ -17,7 +17,7 @@ nest_asyncio.apply()
 # =========================
 
 TOKEN = "7119344534:AAFJP-0BM9OvIoo_bw2RDB5nfm0HVGBKKxQ"
-CSV_FILE = "clientes.csv"
+CSV_FILE = "/data/clientes.csv"
 
 # =========================
 # CREAR CSV SI NO EXISTE
