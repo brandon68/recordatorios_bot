@@ -17,7 +17,6 @@ nest_asyncio.apply()
 # =========================
 
 TOKEN = "7119344534:AAFJP-0BM9OvIoo_bw2RDB5nfm0HVGBKKxQ"
-CHAT_ID = 123456789
 CSV_FILE = "/data/clientes.csv"
 
 # =========================
@@ -124,41 +123,7 @@ def generar_factura():
 
     return f"Fact_{str(nuevo).zfill(3)}"
 
-# =========================
-# AVISOS AUTOMÁTICOS
-# =========================
 
-async def revisar_vencimientos(context: ContextTypes.DEFAULT_TYPE):
-
-    df = leer_datos()
-
-    if df.empty:
-        return
-
-    hoy = pd.Timestamp.now().normalize()
-
-    for _, row in df.iterrows():
-
-        if pd.isna(row["Fecha_Vencimiento"]):
-            continue
-
-        fecha = pd.Timestamp(row["Fecha_Vencimiento"]).normalize()
-
-        if fecha == hoy:
-
-            mensaje = (
-                "🚨 *HOY VENCE UNA CUENTA*\n\n"
-                f"👤 Cliente: *{row['Cliente']}*\n"
-                f"📺 Servicio: *{row['Servicio']}*\n"
-                f"📅 Vence: *{fecha.strftime('%d/%m/%Y')}*\n"
-                f"🔑 Cuenta:\n`{row['Cuenta']}`"
-            )
-
-            await context.bot.send_message(
-                chat_id=CHAT_ID,
-                text=mensaje,
-                parse_mode="Markdown"
-            )
 # =========================
 # GUARDAR CSV
 # =========================
@@ -605,12 +570,4 @@ app.add_handler(CommandHandler("modificar", modificar))
 app.add_handler(CommandHandler("id", id))
 
 print("✅ Bot corriendo...")
-from datetime import time
-
-job_queue = app.job_queue
-
-job_queue.run_daily(
-    revisar_vencimientos,
-    time=time(hour=9, minute=0)
-)
 app.run_polling()
