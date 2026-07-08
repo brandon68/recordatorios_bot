@@ -9,6 +9,7 @@ from telegram.ext import (
 from datetime import datetime
 import nest_asyncio
 import os
+from datetime import datetime, time
 
 nest_asyncio.apply()
 
@@ -604,7 +605,6 @@ app.add_handler(CommandHandler("modificar", modificar))
 app.add_handler(CommandHandler("id", id))
 
 print("✅ Bot corriendo...")
-from datetime import time
 
 job_queue = app.job_queue
 
