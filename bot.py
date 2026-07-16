@@ -556,53 +556,33 @@ async def modificar(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"❌ Error: {e}"
         )
 # =========================
+async def probar(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await revisar_vencimientos(context)
+    
 async def revisar_vencimientos(context: ContextTypes.DEFAULT_TYPE):
 
     df = leer_datos()
 
     hoy = df[df["Dias_Restantes"] == 0]
-
     vencidas = df[df["Dias_Restantes"] < 0]
 
     mensaje = (
-        "🚨 RECORDATORIO\n\n"
+        "🚨 RECORDATORIO DE FACTURAS\n\n"
         f"📅 Hoy vencen: {len(hoy)}\n"
-        f"❌ Vencidas: {len(vencidas)}\n\n"
-        "Usa:\n"
-        "/hoy\n"
-        "/vencidas"
+        f"❌ Vencidas: {len(vencidas)}"
     )
 
-    async def revisar_vencimientos(context: ContextTypes.DEFAULT_TYPE):
+    teclado = [
+        [InlineKeyboardButton("📅 Ver hoy", callback_data="ver_hoy")],
+        [InlineKeyboardButton("❌ Ver vencidas", callback_data="ver_vencidas")],
+        [InlineKeyboardButton("📊 Resumen", callback_data="resumen")]
+    ]
 
-        df = leer_datos()
-
-        hoy = df[df["Dias_Restantes"] == 0]
-        vencidas = df[df["Dias_Restantes"] < 0]
-
-        mensaje = (
-            "🚨 RECORDATORIO DE FACTURAS\n\n"
-            f"📅 Hoy vencen: {len(hoy)}\n"
-            f"❌ Vencidas: {len(vencidas)}"
-        )
-
-        teclado = [
-            [
-                InlineKeyboardButton("📅 Ver hoy", callback_data="ver_hoy")
-            ],
-            [
-                InlineKeyboardButton("❌ Ver vencidas", callback_data="ver_vencidas")
-            ],
-            [
-                InlineKeyboardButton("📊 Resumen", callback_data="resumen")
-            ]
-        ]
-
-        await context.bot.send_message(
-            chat_id=CHAT_ID,
-            text=mensaje,
-            reply_markup=InlineKeyboardMarkup(teclado)
-        )
+    await context.bot.send_message(
+        chat_id=CHAT_ID,
+        text=mensaje,
+        reply_markup=InlineKeyboardMarkup(teclado)
+    )
 
 async def botones(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
@@ -642,6 +622,7 @@ app.add_handler(CommandHandler("eliminar", eliminar))
 app.add_handler(CommandHandler("modificar", modificar))
 app.add_handler(CommandHandler("id", id))
 app.add_handler(CallbackQueryHandler(botones))
+app.add_handler(CommandHandler("probar", probar))
 
 print("✅ Bot corriendo...")
 app.run_polling()
