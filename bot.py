@@ -573,10 +573,47 @@ async def revisar_vencimientos(context: ContextTypes.DEFAULT_TYPE):
         "/vencidas"
     )
 
-    await context.bot.send_message(
-        chat_id=CHAT_ID,
-        text=mensaje
+    async def revisar_vencimientos(context: ContextTypes.DEFAULT_TYPE):
+
+        df = leer_datos()
+
+        hoy = df[df["Dias_Restantes"] == 0]
+        vencidas = df[df["Dias_Restantes"] < 0]
+
+        mensaje = (
+            "🚨 RECORDATORIO DE FACTURAS\n\n"
+            f"📅 Hoy vencen: {len(hoy)}\n"
+            f"❌ Vencidas: {len(vencidas)}"
+        )
+
+        teclado = [
+            [
+                InlineKeyboardButton("📅 Ver hoy", callback_data="ver_hoy")
+            ],
+            [
+                InlineKeyboardButton("❌ Ver vencidas", callback_data="ver_vencidas")
+            ],
+            [
+                InlineKeyboardButton("📊 Resumen", callback_data="resumen")
+            ]
+        ]
+
+        await context.bot.send_message(
+            chat_id=CHAT_ID,
+            text=mensaje,
+            reply_markup=InlineKeyboardMarkup(teclado)
+        )
+
+async def botones(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+    query = update.callback_query
+
+    await query.answer()
+
+    await query.edit_message_text(
+        "🚧 Esta opción estará disponible en la siguiente etapa."
     )
+        
 # BOT
 # =========================
 
@@ -604,6 +641,7 @@ app.add_handler(CommandHandler("agregar", agregar))
 app.add_handler(CommandHandler("eliminar", eliminar))
 app.add_handler(CommandHandler("modificar", modificar))
 app.add_handler(CommandHandler("id", id))
+app.add_handler(CallbackQueryHandler(botones))
 
 print("✅ Bot corriendo...")
 app.run_polling()
