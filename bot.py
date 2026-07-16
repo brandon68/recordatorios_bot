@@ -702,8 +702,8 @@ job_queue = app.job_queue
 job_queue.run_daily(
     revisar_vencimientos,
     time=time(
-        hour=12,
-        minute=3,
+        hour=8,
+        minute=30,
         tzinfo=ZoneInfo("America/Mexico_City")
     )
 )
