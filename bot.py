@@ -590,9 +590,103 @@ async def botones(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await query.answer()
 
-    await query.edit_message_text(
-        "🚧 Esta opción estará disponible en la siguiente etapa."
-    )
+    opcion = query.data
+
+    df = leer_datos()
+
+    # =====================
+    # VER HOY
+    # =====================
+
+    if opcion == "ver_hoy":
+
+        hoy = df[df["Dias_Restantes"] == 0]
+
+        if hoy.empty:
+
+            await query.edit_message_text(
+                "✅ Hoy no vence ninguna factura."
+            )
+
+            return
+
+        mensaje = "📅 FACTURAS QUE VENCEN HOY\n\n"
+
+        for _, row in hoy.iterrows():
+
+            mensaje += (
+                f"🧾 {row['Factura']}\n"
+                f"👤 {row['Cliente']}\n"
+                f"📺 {row['Servicio']}\n\n"
+            )
+
+        await query.edit_message_text(mensaje)
+
+        return
+
+    # =====================
+    # VENCIDAS
+    # =====================
+
+    if opcion == "ver_vencidas":
+
+        vencidas = df[df["Dias_Restantes"] < 0]
+
+        if vencidas.empty:
+
+            await query.edit_message_text(
+                "✅ No hay facturas vencidas."
+            )
+
+            return
+
+        mensaje = (
+            f"❌ FACTURAS VENCIDAS ({len(vencidas)})\n\n"
+        )
+
+        for _, row in vencidas.iterrows():
+
+            mensaje += (
+                f"🧾 {row['Factura']}\n"
+                f"👤 {row['Cliente']}\n"
+                f"📺 {row['Servicio']}\n"
+                f"{row['Alerta']}\n\n"
+            )
+
+        await query.edit_message_text(mensaje)
+
+        return
+
+    # =====================
+    # RESUMEN
+    # =====================
+
+    if opcion == "resumen":
+
+        activos = len(df[df["Dias_Restantes"] >= 0])
+
+        vencidas = len(df[df["Dias_Restantes"] < 0])
+
+        hoy = len(df[df["Dias_Restantes"] == 0])
+
+        proximas = len(
+            df[
+                (df["Dias_Restantes"] > 0)
+                &
+                (df["Dias_Restantes"] <= 3)
+            ]
+        )
+
+        mensaje = (
+            "📊 RESUMEN GENERAL\n\n"
+            f"👥 Clientes: {len(df)}\n\n"
+            f"📅 Vencen hoy: {hoy}\n"
+            f"⚠️ Próximas (3 días): {proximas}\n"
+            f"❌ Vencidas: {vencidas}\n"
+            f"✅ Activas: {activos}"
+        )
+
+        await query.edit_message_text(mensaje)
         
 # BOT
 # =========================
@@ -609,7 +703,7 @@ job_queue.run_daily(
     revisar_vencimientos,
     time=time(
         hour=12,
-        minute=43,
+        minute=3,
         tzinfo=ZoneInfo("America/Mexico_City")
     )
 )
