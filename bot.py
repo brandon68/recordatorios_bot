@@ -556,6 +556,27 @@ async def modificar(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"❌ Error: {e}"
         )
 # =========================
+async def revisar_vencimientos(context: ContextTypes.DEFAULT_TYPE):
+
+    df = leer_datos()
+
+    hoy = df[df["Dias_Restantes"] == 0]
+
+    vencidas = df[df["Dias_Restantes"] < 0]
+
+    mensaje = (
+        "🚨 RECORDATORIO\n\n"
+        f"📅 Hoy vencen: {len(hoy)}\n"
+        f"❌ Vencidas: {len(vencidas)}\n\n"
+        "Usa:\n"
+        "/hoy\n"
+        "/vencidas"
+    )
+
+    await context.bot.send_message(
+        chat_id=CHAT_ID,
+        text=mensaje
+    )
 # BOT
 # =========================
 
@@ -563,6 +584,13 @@ app = (
     ApplicationBuilder()
     .token(TOKEN)
     .build()
+)
+
+job_queue = app.job_queue
+
+job_queue.run_daily(
+    revisar_vencimientos,
+    time=time(hour=9, minute=0)
 )
 
 app.add_handler(CommandHandler("start", start))
