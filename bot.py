@@ -5,7 +5,10 @@ from telegram.ext import (
     ApplicationBuilder,
     CommandHandler,
     ContextTypes,
-    CallbackQueryHandler
+    CallbackQueryHandler,
+    ConversationHandler,
+    MessageHandler,
+    filters
 )
 
 from telegram import (
@@ -26,6 +29,14 @@ nest_asyncio.apply()
 TOKEN = "7119344534:AAFJP-0BM9OvIoo_bw2RDB5nfm0HVGBKKxQ"
 CHAT_ID = 5504611412
 CSV_FILE = "/data/clientes.csv"
+
+# =========================
+# ESTADOS DE CONVERSACIÓN
+# =========================
+
+NOMBRE, SERVICIO, DIAS, CUENTA, CONFIRMAR = range(5)
+# Datos temporales de la conversación
+datos_cliente = {}
 
 # =========================
 # CREAR CSV SI NO EXISTE
@@ -177,23 +188,47 @@ async def id(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
-    mensaje = (
-        "🤖 BOT DE RECORDATORIOS\n\n"
+    teclado = [
 
-        "📌 COMANDOS:\n\n"
+        [
+            InlineKeyboardButton("➕ Agregar Cliente", callback_data="menu_agregar")
+        ],
 
-        "/todo → Ver todo\n"
-        "/ver → Ver activos\n"
-        "/vencidas → Ver vencidas\n"
-        "/buscar nombre\n"
-        "/tipo spotify\n"
-        "/cuentas\n"
-        "/agregar nombre | fecha | dias | servicio | cuenta\n"
-        "/eliminar Fact_001\n"
-        "/modificar Fact_001 | nombre | fecha | dias | servicio | cuenta\n"
+        [
+            InlineKeyboardButton("✏️ Modificar Cliente", callback_data="menu_modificar")
+        ],
+
+        [
+            InlineKeyboardButton("🗑 Eliminar Cliente", callback_data="menu_eliminar")
+        ],
+
+        [
+            InlineKeyboardButton("🔍 Buscar Cliente", callback_data="menu_buscar")
+        ],
+
+        [
+            InlineKeyboardButton("📅 Ver Hoy", callback_data="ver_hoy")
+        ],
+
+        [
+            InlineKeyboardButton("❌ Vencidas", callback_data="ver_vencidas")
+        ],
+
+        [
+            InlineKeyboardButton("📊 Resumen", callback_data="resumen")
+        ]
+
+    ]
+
+    await update.message.reply_text(
+
+        "🤖 BOT RECORDATORIOS\n\n"
+
+        "Selecciona una opción:",
+
+        reply_markup=InlineKeyboardMarkup(teclado)
+
     )
-
-    await update.message.reply_text(mensaje)
 
 # =========================
 # TODO
@@ -591,6 +626,16 @@ async def botones(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.answer()
 
     opcion = query.data
+    
+    if opcion == "menu_agregar":
+
+        await query.message.reply_text(
+
+            "👤 Escribe el nombre del cliente:"
+
+        )
+
+        return NOMBRE
 
     df = leer_datos()
 
@@ -702,8 +747,8 @@ job_queue = app.job_queue
 job_queue.run_daily(
     revisar_vencimientos,
     time=time(
-        hour=8,
-        minute=30,
+        hour=12,
+        minute=3,
         tzinfo=ZoneInfo("America/Mexico_City")
     )
 )
