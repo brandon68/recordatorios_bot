@@ -627,7 +627,7 @@ job_queue = app.job_queue
 
 job_queue.run_daily(
     revisar_vencimientos,
-    time=time(hour=9, minute=0)
+    time=time(hour=11, minute=40)
 )
 
 app.add_handler(CommandHandler("start", start))
