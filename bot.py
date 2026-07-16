@@ -34,7 +34,7 @@ CSV_FILE = "/data/clientes.csv"
 # ESTADOS DE CONVERSACIÓN
 # =========================
 
-NOMBRE, SERVICIO, DIAS, CUENTA, CONFIRMAR = range(5)
+NOMBRE, SERVICIO, CUENTA, DIAS, FECHA, CONFIRMAR = range(6)
 # Datos temporales de la conversación
 datos_cliente = {}
 
@@ -465,6 +465,274 @@ async def agregar(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"❌ Error: {e}"
         )
 
+
+# =========================
+# CONVERSACION AGREGAR CLIENTE
+# =========================
+
+
+async def recibir_nombre(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+    datos_cliente["nombre"] = update.message.text
+
+    await update.message.reply_text(
+        "📺 Escribe el servicio:\n\n"
+        "Ejemplo:\n"
+        "Netflix"
+    )
+
+    return SERVICIO
+
+
+
+async def recibir_servicio(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+    datos_cliente["servicio"] = update.message.text
+
+    await update.message.reply_text(
+        "🔑 Escribe la cuenta:\n\n"
+        "Ejemplo:\n"
+        "correo@gmail.com"
+    )
+
+    return CUENTA
+
+
+
+async def recibir_cuenta(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+    datos_cliente["cuenta"] = update.message.text
+
+
+    await update.message.reply_text(
+        "⏳ ¿Cuántos días tendrá la cuenta?\n\n"
+        "Ejemplo:\n"
+        "30"
+    )
+
+    return DIAS
+
+
+
+async def recibir_dias(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+    try:
+
+        dias = int(update.message.text)
+
+        datos_cliente["dias"] = dias
+
+
+        teclado = [
+            [
+                InlineKeyboardButton(
+                    "📅 Hoy",
+                    callback_data="fecha_hoy"
+                )
+            ]
+        ]
+
+
+        await update.message.reply_text(
+
+            "📅 Escribe la fecha de inicio\n\n"
+            "Formato:\n"
+            "2026-07-16\n\n"
+            "o presiona Hoy",
+
+            reply_markup=InlineKeyboardMarkup(teclado)
+
+        )
+
+        return FECHA
+
+
+    except:
+
+        await update.message.reply_text(
+            "❌ Escribe solamente números\nEjemplo: 30"
+        )
+
+        return DIAS
+
+
+
+
+async def recibir_fecha(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+    datos_cliente["fecha"] = update.message.text
+
+
+    factura = generar_factura()
+
+
+    datos_cliente["factura"] = factura
+
+
+    mensaje = (
+
+        "📋 CONFIRMAR CLIENTE\n\n"
+
+        f"🧾 Factura: {factura}\n"
+        f"👤 Cliente: {datos_cliente['nombre']}\n"
+        f"📺 Servicio: {datos_cliente['servicio']}\n"
+        f"🔑 Cuenta: {datos_cliente['cuenta']}\n"
+        f"⏳ Días: {datos_cliente['dias']}\n"
+        f"📅 Fecha: {datos_cliente['fecha']}\n"
+
+    )
+
+
+    teclado = [
+
+        [
+            InlineKeyboardButton(
+                "✅ Guardar",
+                callback_data="guardar_cliente"
+            ),
+
+            InlineKeyboardButton(
+                "❌ Cancelar",
+                callback_data="cancelar_cliente"
+            )
+        ]
+
+    ]
+
+
+    await update.message.reply_text(
+
+        mensaje,
+
+        reply_markup=InlineKeyboardMarkup(teclado)
+
+    )
+
+
+    return CONFIRMAR
+
+
+
+
+
+async def boton_fecha(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+    query = update.callback_query
+
+    await query.answer()
+
+
+    if query.data == "fecha_hoy":
+
+        datos_cliente["fecha"] = datetime.now().strftime(
+            "%Y-%m-%d"
+        )
+
+
+        factura = generar_factura()
+
+        datos_cliente["factura"] = factura
+
+
+        mensaje = (
+
+            "📋 CONFIRMAR CLIENTE\n\n"
+
+            f"🧾 Factura: {factura}\n"
+            f"👤 Cliente: {datos_cliente['nombre']}\n"
+            f"📺 Servicio: {datos_cliente['servicio']}\n"
+            f"🔑 Cuenta: {datos_cliente['cuenta']}\n"
+            f"⏳ Días: {datos_cliente['dias']}\n"
+            f"📅 Fecha: {datos_cliente['fecha']}\n"
+
+        )
+
+
+        teclado = [
+            [
+                InlineKeyboardButton(
+                    "✅ Guardar",
+                    callback_data="guardar_cliente"
+                ),
+
+                InlineKeyboardButton(
+                    "❌ Cancelar",
+                    callback_data="cancelar_cliente"
+                )
+            ]
+        ]
+
+
+        await query.message.reply_text(
+
+            mensaje,
+
+            reply_markup=InlineKeyboardMarkup(teclado)
+
+        )
+
+        return CONFIRMAR
+
+
+
+
+async def confirmar_cliente(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+    query = update.callback_query
+
+    await query.answer()
+
+
+    if query.data == "guardar_cliente":
+
+
+        guardar_cliente(
+
+            datos_cliente["factura"],
+
+            datos_cliente["nombre"],
+
+            datos_cliente["fecha"],
+
+            datos_cliente["dias"],
+
+            datos_cliente["servicio"],
+
+            datos_cliente["cuenta"]
+
+        )
+
+
+        await query.message.reply_text(
+
+            "✅ Cliente guardado correctamente\n\n"
+
+            f"🧾 {datos_cliente['factura']}"
+
+        )
+
+
+        datos_cliente.clear()
+
+
+        return ConversationHandler.END
+
+
+
+    if query.data == "cancelar_cliente":
+
+
+        datos_cliente.clear()
+
+
+        await query.message.reply_text(
+
+            "❌ Registro cancelado"
+
+        )
+
+
+        return ConversationHandler.END
 # =========================
 # ELIMINAR
 # =========================
@@ -753,6 +1021,78 @@ job_queue.run_daily(
     )
 )
 
+conv_agregar = ConversationHandler(
+
+    entry_points=[
+        CallbackQueryHandler(
+            botones,
+            pattern="^menu_agregar$"
+        )
+    ],
+
+
+    states={
+
+        NOMBRE:[
+            MessageHandler(
+                filters.TEXT & ~filters.COMMAND,
+                recibir_nombre
+            )
+        ],
+
+
+        SERVICIO:[
+            MessageHandler(
+                filters.TEXT & ~filters.COMMAND,
+                recibir_servicio
+            )
+        ],
+
+
+        CUENTA:[
+            MessageHandler(
+                filters.TEXT & ~filters.COMMAND,
+                recibir_cuenta
+            )
+        ],
+
+
+        DIAS:[
+            MessageHandler(
+                filters.TEXT & ~filters.COMMAND,
+                recibir_dias
+            )
+        ],
+
+
+        FECHA:[
+            MessageHandler(
+                filters.TEXT & ~filters.COMMAND,
+                recibir_fecha
+            ),
+
+            CallbackQueryHandler(
+                boton_fecha,
+                pattern="^fecha_hoy$"
+            )
+        ],
+
+
+        CONFIRMAR:[
+            CallbackQueryHandler(
+                confirmar_cliente,
+                pattern="^(guardar_cliente|cancelar_cliente)$"
+            )
+        ]
+
+    },
+
+
+    fallbacks=[]
+
+)
+
+
 app.add_handler(CommandHandler("start", start))
 app.add_handler(CommandHandler("todo", todo))
 app.add_handler(CommandHandler("ver", ver))
@@ -764,7 +1104,13 @@ app.add_handler(CommandHandler("agregar", agregar))
 app.add_handler(CommandHandler("eliminar", eliminar))
 app.add_handler(CommandHandler("modificar", modificar))
 app.add_handler(CommandHandler("id", id))
-app.add_handler(CallbackQueryHandler(botones))
+app.add_handler(conv_agregar)
+
+app.add_handler(
+    CallbackQueryHandler(
+        botones
+    )
+)
 app.add_handler(CommandHandler("probar", probar))
 
 print("✅ Bot corriendo...")
