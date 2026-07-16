@@ -12,7 +12,7 @@ from telegram import (
     InlineKeyboardButton,
     InlineKeyboardMarkup
 )
-
+from zoneinfo import ZoneInfo
 from datetime import datetime, time
 import nest_asyncio
 import os
@@ -607,7 +607,11 @@ job_queue = app.job_queue
 
 job_queue.run_daily(
     revisar_vencimientos,
-    time=time(hour=11, minute=40)
+    time=time(
+        hour=12,
+        minute=3,
+        tzinfo=ZoneInfo("America/Mexico_City")
+    )
 )
 
 app.add_handler(CommandHandler("start", start))
