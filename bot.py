@@ -4,9 +4,16 @@ from telegram import Update
 from telegram.ext import (
     ApplicationBuilder,
     CommandHandler,
-    ContextTypes
+    ContextTypes,
+    CallbackQueryHandler
 )
-from datetime import datetime
+
+from telegram import (
+    InlineKeyboardButton,
+    InlineKeyboardMarkup
+)
+
+from datetime import datetime, time
 import nest_asyncio
 import os
 
@@ -17,6 +24,7 @@ nest_asyncio.apply()
 # =========================
 
 TOKEN = "7119344534:AAFJP-0BM9OvIoo_bw2RDB5nfm0HVGBKKxQ"
+CHAT_ID = 5504611412
 CSV_FILE = "/data/clientes.csv"
 
 # =========================
