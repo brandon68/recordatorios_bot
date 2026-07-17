@@ -34,7 +34,7 @@ CSV_FILE = "/data/clientes.csv"
 # ESTADOS DE CONVERSACIÓN
 # =========================
 
-NOMBRE, SERVICIO, CUENTA, DIAS, FECHA, CONFIRMAR = range(6)
+NOMBRE, SERVICIO, CUENTA, DIAS, FECHA, CONFIRMAR, MOD_NOMBRE, MOD_FACTURA, MOD_ACCION, MOD_DIAS = range(10)
 # Datos temporales de la conversación
 datos_cliente = {}
 
@@ -858,6 +858,59 @@ async def modificar(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(
             f"❌ Error: {e}"
         )
+        
+        
+        ################## nuevo comando modificar#################
+
+async def recibir_nombre_modificar(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+    nombre = update.message.text.lower()
+
+    df = leer_datos()
+
+    resultados = df[
+        df["Cliente"]
+        .astype(str)
+        .str.lower()
+        .str.contains(nombre)
+    ]
+
+    if resultados.empty:
+
+        await update.message.reply_text(
+            "❌ No se encontraron clientes."
+        )
+
+        return ConversationHandler.END
+
+    teclado = []
+
+    mensaje = "👥 CLIENTES ENCONTRADOS\n\n"
+
+    for _, fila in resultados.iterrows():
+
+        mensaje += (
+            f"🧾 {fila['Factura']}\n"
+            f"👤 {fila['Cliente']}\n"
+            f"📺 {fila['Servicio']}\n\n"
+        )
+
+        teclado.append([
+            InlineKeyboardButton(
+                f"Seleccionar {fila['Factura']}",
+                callback_data=f"modificar_{fila['Factura']}"
+            )
+        ])
+
+    await update.message.reply_text(
+        mensaje,
+        reply_markup=InlineKeyboardMarkup(teclado)
+    )
+
+    return MOD_FACTURA
+
+
+        
 # =========================
 async def probar(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await revisar_vencimientos(context)
@@ -1111,6 +1164,7 @@ app.add_handler(
         botones
     )
 )
+
 app.add_handler(CommandHandler("probar", probar))
 
 print("✅ Bot corriendo...")
