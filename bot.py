@@ -34,7 +34,7 @@ CSV_FILE = "/data/clientes.csv"
 # ESTADOS DE CONVERSACIÓN
 # =========================
 
-NOMBRE, SERVICIO, CUENTA, DIAS, FECHA, CONFIRMAR, MOD_NOMBRE, MOD_FACTURA, MOD_ACCION, MOD_DIAS = range(10)
+NOMBRE, SERVICIO, CUENTA, DIAS, FECHA, CONFIRMAR = range(6)
 # Datos temporales de la conversación
 datos_cliente = {}
 
@@ -858,223 +858,6 @@ async def modificar(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(
             f"❌ Error: {e}"
         )
-        
-# =========================
-# MODIFICAR POR NOMBRE
-# =========================
-
-
-async def iniciar_modificar(update: Update, context: ContextTypes.DEFAULT_TYPE):
-
-    query = update.callback_query
-
-    await query.answer()
-
-
-    await query.message.reply_text(
-
-        "🔎 Escribe el nombre del cliente:\n\n"
-        "Ejemplo:\n"
-        "Juan"
-
-    )
-
-
-    return MOD_NOMBRE
-
-#################def##############
-
-async def recibir_nombre_modificar(update: Update, context: ContextTypes.DEFAULT_TYPE):
-
-
-    nombre = update.message.text.strip()
-
-
-    df = leer_datos()
-
-
-    resultados = df[
-        df["Cliente"]
-        .astype(str)
-        .str.lower()
-        .str.contains(nombre.lower())
-    ]
-
-
-    if resultados.empty:
-
-
-        await update.message.reply_text(
-
-            "❌ No encontré ningún cliente"
-
-        )
-
-        return ConversationHandler.END
-
-
-
-    datos_cliente["busqueda_modificar"] = nombre
-
-
-    teclado = []
-
-
-    mensaje = "📋 HISTORIAL DEL CLIENTE\n\n"
-
-
-    for _, row in resultados.iterrows():
-
-
-        factura = row["Factura"]
-
-
-        texto_boton = (
-            f"🧾 {factura} | {row['Servicio']}"
-        )
-
-
-        teclado.append([
-
-            InlineKeyboardButton(
-
-                texto_boton,
-
-                callback_data=f"modificar_{factura}"
-
-            )
-
-        ])
-
-
-
-        mensaje += (
-
-            f"🧾 {factura}\n"
-            f"📺 {row['Servicio']}\n"
-            f"🔑 {row['Cuenta']}\n"
-            f"📅 {row['Fecha_Vencimiento'].date()}\n\n"
-
-        )
-
-
-
-    await update.message.reply_text(
-
-        mensaje,
-
-        reply_markup=InlineKeyboardMarkup(teclado)
-
-    )
-
-
-    return MOD_FACTURA
-
-async def seleccionar_factura_modificar(update: Update, context: ContextTypes.DEFAULT_TYPE):
-
-
-    query = update.callback_query
-
-    await query.answer()
-
-
-    factura = query.data.replace(
-        "modificar_",
-        ""
-    )
-
-
-    datos_cliente["factura_modificar"] = factura
-
-
-
-    df = leer_datos()
-
-
-    fila = df[
-        df["Factura"] == factura
-    ].iloc[0]
-
-
-
-    mensaje = (
-
-        "📋 FACTURA SELECCIONADA\n\n"
-
-        f"🧾 {fila['Factura']}\n"
-        f"👤 {fila['Cliente']}\n"
-        f"📺 {fila['Servicio']}\n"
-        f"🔑 {fila['Cuenta']}\n\n"
-
-        "¿Qué deseas modificar?"
-
-    )
-
-
-    teclado = [
-
-        [
-
-            InlineKeyboardButton(
-
-                "🔄 Renovar tiempo",
-
-                callback_data="accion_renovar"
-
-            )
-
-        ],
-
-        [
-
-            InlineKeyboardButton(
-
-                "✏️ Cambiar cuenta",
-
-                callback_data="accion_cuenta"
-
-            )
-
-        ],
-
-        [
-
-            InlineKeyboardButton(
-
-                "📝 Editar datos",
-
-                callback_data="accion_datos"
-
-            )
-
-        ],
-
-        [
-
-            InlineKeyboardButton(
-
-                "❌ Cancelar",
-
-                callback_data="accion_cancelar"
-
-            )
-
-        ]
-
-    ]
-
-
-    await query.message.reply_text(
-
-        mensaje,
-
-        reply_markup=InlineKeyboardMarkup(teclado)
-
-    )
-
-
-    return MOD_ACCION
-        
 # =========================
 async def probar(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await revisar_vencimientos(context)
@@ -1232,7 +1015,7 @@ job_queue = app.job_queue
 job_queue.run_daily(
     revisar_vencimientos,
     time=time(
-        hour=8,
+        hour=12,
         minute=3,
         tzinfo=ZoneInfo("America/Mexico_City")
     )
@@ -1309,66 +1092,6 @@ conv_agregar = ConversationHandler(
 
 )
 
-conv_modificar = ConversationHandler(
-
-    entry_points=[
-
-        CallbackQueryHandler(
-
-            iniciar_modificar,
-
-            pattern="^menu_modificar$"
-
-        )
-
-    ],
-
-
-    states={
-
-
-        MOD_NOMBRE:[
-
-            MessageHandler(
-
-                filters.TEXT & ~filters.COMMAND,
-
-                recibir_nombre_modificar
-
-            )
-
-        ],
-
-
-        MOD_FACTURA:[
-
-            CallbackQueryHandler(
-
-                seleccionar_factura_modificar,
-
-                pattern="^modificar_"
-
-            )
-
-        ],
-
-
-        MOD_ACCION:[
-
-            CallbackQueryHandler(
-
-                seleccionar_factura_modificar
-
-            )
-
-        ]
-
-    },
-
-
-    fallbacks=[]
-
-)
 
 app.add_handler(CommandHandler("start", start))
 app.add_handler(CommandHandler("todo", todo))
@@ -1378,7 +1101,6 @@ app.add_handler(CommandHandler("buscar", buscar))
 app.add_handler(CommandHandler("tipo", tipo))
 app.add_handler(CommandHandler("cuentas", cuentas))
 app.add_handler(CommandHandler("agregar", agregar))
-app.add_handler(conv_modificar)
 app.add_handler(CommandHandler("eliminar", eliminar))
 app.add_handler(CommandHandler("modificar", modificar))
 app.add_handler(CommandHandler("id", id))
