@@ -1232,7 +1232,7 @@ job_queue = app.job_queue
 job_queue.run_daily(
     revisar_vencimientos,
     time=time(
-        hour=12,
+        hour=8,
         minute=3,
         tzinfo=ZoneInfo("America/Mexico_City")
     )
