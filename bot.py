@@ -875,6 +875,23 @@ async def modificar(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(
             f"❌ Error: {e}"
         )
+        
+        
+# =========================
+# INICIAR MODIFICAR
+# =========================
+
+async def iniciar_modificar(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+    query = update.callback_query
+
+    await query.answer()
+
+    await query.message.reply_text(
+        "🔎 Escribe el nombre del cliente:"
+    )
+
+    return MOD_NOMBRE        
 ###################
 #########MODIFICAR CLIENTE
 #=========================
@@ -1245,6 +1262,37 @@ conv_agregar = ConversationHandler(
 
 )
 
+conv_modificar = ConversationHandler(
+
+    entry_points=[
+        CallbackQueryHandler(
+            iniciar_modificar,
+            pattern="^menu_modificar$"
+        )
+    ],
+
+    states={
+
+        MOD_NOMBRE:[
+            MessageHandler(
+                filters.TEXT & ~filters.COMMAND,
+                recibir_nombre_modificar
+            )
+        ],
+
+        MOD_FACTURA:[
+            CallbackQueryHandler(
+                seleccionar_factura_modificar,
+                pattern="^modificar_"
+            )
+        ],
+
+    },
+
+    fallbacks=[]
+
+)
+
 
 app.add_handler(CommandHandler("start", start))
 app.add_handler(CommandHandler("todo", todo))
@@ -1258,7 +1306,7 @@ app.add_handler(CommandHandler("eliminar", eliminar))
 app.add_handler(CommandHandler("modificar", modificar))
 app.add_handler(CommandHandler("id", id))
 app.add_handler(conv_agregar)
-
+app.add_handler(conv_modificar)
 app.add_handler(
     CallbackQueryHandler(
         botones
