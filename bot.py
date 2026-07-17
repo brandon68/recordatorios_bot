@@ -34,7 +34,24 @@ CSV_FILE = "/data/clientes.csv"
 # ESTADOS DE CONVERSACIÓN
 # =========================
 
-NOMBRE, SERVICIO, CUENTA, DIAS, FECHA, CONFIRMAR, MOD_NOMBRE, MOD_FACTURA, MOD_ACCION, MOD_DIAS = range(10)
+(
+    NOMBRE,
+    SERVICIO,
+    CUENTA,
+    DIAS,
+    FECHA,
+    CONFIRMAR,
+
+    MOD_NOMBRE,
+    MOD_FACTURA,
+    MOD_ACCION,
+    MOD_DIAS,
+    MOD_CUENTA,
+    MOD_FECHA,
+    MOD_SERVICIO,
+    MOD_CLIENTE
+
+) = range(14)
 # Datos temporales de la conversación
 datos_cliente = {}
 
@@ -858,10 +875,9 @@ async def modificar(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(
             f"❌ Error: {e}"
         )
-        
-        
-        ################## nuevo comando modificar#################
-
+###################
+#########MODIFICAR CLIENTE
+#=========================
 async def recibir_nombre_modificar(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     nombre = update.message.text.lower()
@@ -869,16 +885,13 @@ async def recibir_nombre_modificar(update: Update, context: ContextTypes.DEFAULT
     df = leer_datos()
 
     resultados = df[
-        df["Cliente"]
-        .astype(str)
-        .str.lower()
-        .str.contains(nombre)
+        df["Cliente"].astype(str).str.lower().str.contains(nombre)
     ]
 
     if resultados.empty:
 
         await update.message.reply_text(
-            "❌ No se encontraron clientes."
+            "❌ No encontré clientes."
         )
 
         return ConversationHandler.END
@@ -909,8 +922,95 @@ async def recibir_nombre_modificar(update: Update, context: ContextTypes.DEFAULT
 
     return MOD_FACTURA
 
+async def seleccionar_factura_modificar(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
-        
+    query = update.callback_query
+
+    await query.answer()
+
+    factura = query.data.replace(
+        "modificar_",
+        ""
+    )
+
+    datos_cliente["factura_modificar"] = factura
+
+    df = leer_datos()
+
+    fila = df[df["Factura"] == factura].iloc[0]
+
+    mensaje = (
+
+        "📋 CLIENTE\n\n"
+
+        f"🧾 {fila['Factura']}\n"
+        f"👤 {fila['Cliente']}\n"
+        f"📺 {fila['Servicio']}\n"
+        f"🔑 {fila['Cuenta']}\n"
+        f"📅 Inicio: {fila['Fecha_Emision'].date()}\n"
+        f"⏳ {fila['Dias']} días\n\n"
+
+        "¿Qué deseas modificar?"
+
+    )
+
+    teclado = [
+
+        [
+            InlineKeyboardButton(
+                "⏳ Renovar días",
+                callback_data="accion_dias"
+            )
+        ],
+
+        [
+            InlineKeyboardButton(
+                "🔑 Cambiar cuenta",
+                callback_data="accion_cuenta"
+            )
+        ],
+
+        [
+            InlineKeyboardButton(
+                "📅 Cambiar fecha",
+                callback_data="accion_fecha"
+            )
+        ],
+
+        [
+            InlineKeyboardButton(
+                "📺 Cambiar servicio",
+                callback_data="accion_servicio"
+            )
+        ],
+
+        [
+            InlineKeyboardButton(
+                "👤 Cambiar nombre",
+                callback_data="accion_cliente"
+            )
+        ],
+
+        [
+            InlineKeyboardButton(
+                "❌ Cancelar",
+                callback_data="accion_cancelar"
+            )
+        ]
+
+    ]
+
+    await query.message.reply_text(
+
+        mensaje,
+
+        reply_markup=InlineKeyboardMarkup(teclado)
+
+    )
+
+    return MOD_ACCION
+
+
 # =========================
 async def probar(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await revisar_vencimientos(context)
