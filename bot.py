@@ -1192,7 +1192,6 @@ async def guardar_modificacion(
 # ==========================================
 # RECIBIR NUEVOS DÍAS
 # ==========================================
-
 async def recibir_dias_modificar(
     update: Update,
     context: ContextTypes.DEFAULT_TYPE
@@ -1214,12 +1213,75 @@ async def recibir_dias_modificar(
 
         return MOD_DIAS
 
-    return await guardar_modificacion(
-        update,
+    indice = datos_cliente.get("indice_modificar")
+    factura = datos_cliente.get("factura_modificar")
+
+    if indice is None:
+
+        await update.message.reply_text(
+            "❌ No hay un cliente seleccionado.\n"
+            "Inicia nuevamente con /start."
+        )
+
+        return ConversationHandler.END
+
+    df = leer_datos()
+
+    if indice not in df.index:
+
+        await update.message.reply_text(
+            "❌ El cliente seleccionado ya no existe."
+        )
+
+        datos_cliente.clear()
+
+        return ConversationHandler.END
+
+    # Fecha actual de México
+    fecha_hoy = datetime.now(
+        ZoneInfo("America/Mexico_City")
+    ).strftime("%Y-%m-%d")
+
+    # Renovar días y reiniciar la fecha desde hoy
+    df.at[indice, "Dias"] = nuevos_dias
+    df.at[indice, "Fecha_Emision"] = fecha_hoy
+
+    df_guardar = df[[
+        "Factura",
+        "Cliente",
+        "Fecha_Emision",
         "Dias",
-        nuevos_dias
+        "Servicio",
+        "Cuenta"
+    ]].copy()
+
+    df_guardar["Fecha_Emision"] = pd.to_datetime(
+        df_guardar["Fecha_Emision"],
+        errors="coerce"
+    ).dt.strftime("%Y-%m-%d")
+
+    df_guardar.to_csv(
+        CSV_FILE,
+        index=False,
+        encoding="utf-8-sig"
     )
 
+    fecha_vencimiento = (
+        pd.Timestamp(fecha_hoy) +
+        pd.Timedelta(days=nuevos_dias)
+    ).strftime("%Y-%m-%d")
+
+    await update.message.reply_text(
+        "✅ Cliente renovado correctamente\n\n"
+        f"🧾 Factura: {factura}\n"
+        f"📅 Nuevo inicio: {fecha_hoy}\n"
+        f"⏳ Nuevos días: {nuevos_dias}\n"
+        f"📆 Nuevo vencimiento: {fecha_vencimiento}"
+    )
+
+    datos_cliente.clear()
+
+    return ConversationHandler.END
 
 # ==========================================
 # RECIBIR NUEVA CUENTA
