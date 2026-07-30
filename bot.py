@@ -1027,7 +1027,287 @@ async def seleccionar_factura_modificar(update: Update, context: ContextTypes.DE
 
     return MOD_ACCION
 
+# ==========================================
+# SELECCIONAR QUÉ DATO SE VA A MODIFICAR
+# ==========================================
 
+async def seleccionar_accion_modificar(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE
+):
+
+    query = update.callback_query
+    await query.answer()
+
+    accion = query.data
+
+    if accion == "accion_dias":
+
+        await query.message.reply_text(
+            "⏳ Escribe la nueva cantidad de días:\n\n"
+            "Ejemplo: 30"
+        )
+
+        return MOD_DIAS
+
+    elif accion == "accion_cuenta":
+
+        await query.message.reply_text(
+            "🔑 Escribe la nueva cuenta:"
+        )
+
+        return MOD_CUENTA
+
+    elif accion == "accion_fecha":
+
+        await query.message.reply_text(
+            "📅 Escribe la nueva fecha de inicio:\n\n"
+            "Formato: 2026-07-29"
+        )
+
+        return MOD_FECHA
+
+    elif accion == "accion_servicio":
+
+        await query.message.reply_text(
+            "📺 Escribe el nuevo servicio:"
+        )
+
+        return MOD_SERVICIO
+
+    elif accion == "accion_cliente":
+
+        await query.message.reply_text(
+            "👤 Escribe el nuevo nombre del cliente:"
+        )
+
+        return MOD_CLIENTE
+
+    elif accion == "accion_cancelar":
+
+        datos_cliente.pop("factura_modificar", None)
+
+        await query.message.reply_text(
+            "❌ Modificación cancelada."
+        )
+
+        return ConversationHandler.END
+
+
+# ==========================================
+# GUARDAR UNA MODIFICACIÓN EN EL CSV
+# ==========================================
+
+async def guardar_modificacion(
+    update: Update,
+    columna: str,
+    valor
+):
+
+    factura = datos_cliente.get("factura_modificar")
+
+    if not factura:
+
+        await update.message.reply_text(
+            "❌ No hay una factura seleccionada.\n"
+            "Inicia nuevamente con /start."
+        )
+
+        return ConversationHandler.END
+
+    df = leer_datos()
+
+    indice = df[df["Factura"] == factura].index
+
+    if len(indice) == 0:
+
+        await update.message.reply_text(
+            "❌ La factura ya no existe."
+        )
+
+        datos_cliente.pop("factura_modificar", None)
+
+        return ConversationHandler.END
+
+    fila = indice[0]
+
+    df.at[fila, columna] = valor
+
+    # Guardar únicamente las columnas originales.
+    df_guardar = df[[
+        "Factura",
+        "Cliente",
+        "Fecha_Emision",
+        "Dias",
+        "Servicio",
+        "Cuenta"
+    ]].copy()
+
+    # Guardar fechas con formato limpio.
+    df_guardar["Fecha_Emision"] = pd.to_datetime(
+        df_guardar["Fecha_Emision"],
+        errors="coerce"
+    ).dt.strftime("%Y-%m-%d")
+
+    df_guardar.to_csv(
+        CSV_FILE,
+        index=False,
+        encoding="utf-8-sig"
+    )
+
+    await update.message.reply_text(
+        "✅ Cliente modificado correctamente\n\n"
+        f"🧾 Factura: {factura}"
+    )
+
+    datos_cliente.pop("factura_modificar", None)
+
+    return ConversationHandler.END
+
+
+# ==========================================
+# RECIBIR NUEVOS DÍAS
+# ==========================================
+
+async def recibir_dias_modificar(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE
+):
+
+    try:
+
+        nuevos_dias = int(update.message.text.strip())
+
+        if nuevos_dias <= 0:
+            raise ValueError
+
+    except ValueError:
+
+        await update.message.reply_text(
+            "❌ Escribe una cantidad válida de días.\n\n"
+            "Ejemplo: 30"
+        )
+
+        return MOD_DIAS
+
+    return await guardar_modificacion(
+        update,
+        "Dias",
+        nuevos_dias
+    )
+
+
+# ==========================================
+# RECIBIR NUEVA CUENTA
+# ==========================================
+
+async def recibir_cuenta_modificar(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE
+):
+
+    nueva_cuenta = update.message.text.strip()
+
+    if not nueva_cuenta:
+
+        await update.message.reply_text(
+            "❌ La cuenta no puede estar vacía."
+        )
+
+        return MOD_CUENTA
+
+    return await guardar_modificacion(
+        update,
+        "Cuenta",
+        nueva_cuenta
+    )
+
+
+# ==========================================
+# RECIBIR NUEVA FECHA
+# ==========================================
+
+async def recibir_fecha_modificar(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE
+):
+
+    texto_fecha = update.message.text.strip()
+
+    try:
+
+        nueva_fecha = datetime.strptime(
+            texto_fecha,
+            "%Y-%m-%d"
+        ).strftime("%Y-%m-%d")
+
+    except ValueError:
+
+        await update.message.reply_text(
+            "❌ Fecha inválida.\n\n"
+            "Usa este formato:\n"
+            "2026-07-29"
+        )
+
+        return MOD_FECHA
+
+    return await guardar_modificacion(
+        update,
+        "Fecha_Emision",
+        nueva_fecha
+    )
+
+
+# ==========================================
+# RECIBIR NUEVO SERVICIO
+# ==========================================
+
+async def recibir_servicio_modificar(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE
+):
+
+    nuevo_servicio = update.message.text.strip()
+
+    if not nuevo_servicio:
+
+        await update.message.reply_text(
+            "❌ El servicio no puede estar vacío."
+        )
+
+        return MOD_SERVICIO
+
+    return await guardar_modificacion(
+        update,
+        "Servicio",
+        nuevo_servicio
+    )
+
+
+# ==========================================
+# RECIBIR NUEVO NOMBRE
+# ==========================================
+
+async def recibir_cliente_modificar(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE
+):
+
+    nuevo_nombre = update.message.text.strip()
+
+    if not nuevo_nombre:
+
+        await update.message.reply_text(
+            "❌ El nombre no puede estar vacío."
+        )
+
+        return MOD_CLIENTE
+
+    return await guardar_modificacion(
+        update,
+        "Cliente",
+        nuevo_nombre
+    )
 # =========================
 async def probar(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await revisar_vencimientos(context)
@@ -1060,20 +1340,35 @@ async def revisar_vencimientos(context: ContextTypes.DEFAULT_TYPE):
 async def botones(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     query = update.callback_query
-
     await query.answer()
 
     opcion = query.data
-    
+
     if opcion == "menu_agregar":
 
         await query.message.reply_text(
-
             "👤 Escribe el nombre del cliente:"
-
         )
 
         return NOMBRE
+
+    if opcion == "menu_eliminar":
+
+        await query.message.reply_text(
+            "🗑 Para eliminar utiliza:\n\n"
+            "/eliminar Fact_001"
+        )
+
+        return
+
+    if opcion == "menu_buscar":
+
+        await query.message.reply_text(
+            "🔍 Para buscar utiliza:\n\n"
+            "/buscar nombre"
+        )
+
+        return
 
     df = leer_datos()
 
@@ -1265,32 +1560,93 @@ conv_agregar = ConversationHandler(
 conv_modificar = ConversationHandler(
 
     entry_points=[
+
         CallbackQueryHandler(
             iniciar_modificar,
             pattern="^menu_modificar$"
         )
+
     ],
 
     states={
 
-        MOD_NOMBRE:[
+        MOD_NOMBRE: [
+
             MessageHandler(
                 filters.TEXT & ~filters.COMMAND,
                 recibir_nombre_modificar
             )
+
         ],
 
-        MOD_FACTURA:[
+        MOD_FACTURA: [
+
             CallbackQueryHandler(
                 seleccionar_factura_modificar,
                 pattern="^modificar_"
             )
+
         ],
+
+        MOD_ACCION: [
+
+            CallbackQueryHandler(
+                seleccionar_accion_modificar,
+                pattern="^accion_"
+            )
+
+        ],
+
+        MOD_DIAS: [
+
+            MessageHandler(
+                filters.TEXT & ~filters.COMMAND,
+                recibir_dias_modificar
+            )
+
+        ],
+
+        MOD_CUENTA: [
+
+            MessageHandler(
+                filters.TEXT & ~filters.COMMAND,
+                recibir_cuenta_modificar
+            )
+
+        ],
+
+        MOD_FECHA: [
+
+            MessageHandler(
+                filters.TEXT & ~filters.COMMAND,
+                recibir_fecha_modificar
+            )
+
+        ],
+
+        MOD_SERVICIO: [
+
+            MessageHandler(
+                filters.TEXT & ~filters.COMMAND,
+                recibir_servicio_modificar
+            )
+
+        ],
+
+        MOD_CLIENTE: [
+
+            MessageHandler(
+                filters.TEXT & ~filters.COMMAND,
+                recibir_cliente_modificar
+            )
+
+        ]
 
     },
 
-    fallbacks=[]
+    fallbacks=[],
 
+    allow_reentry=True
 )
 
 
