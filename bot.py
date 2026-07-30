@@ -895,14 +895,20 @@ async def iniciar_modificar(update: Update, context: ContextTypes.DEFAULT_TYPE):
 ###################
 #########MODIFICAR CLIENTE
 #=========================
-async def recibir_nombre_modificar(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def recibir_nombre_modificar(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE
+):
 
-    nombre = update.message.text.lower()
+    nombre = update.message.text.strip().lower()
 
     df = leer_datos()
 
     resultados = df[
-        df["Cliente"].astype(str).str.lower().str.contains(nombre)
+        df["Cliente"]
+        .astype(str)
+        .str.lower()
+        .str.contains(nombre, na=False)
     ]
 
     if resultados.empty:
@@ -917,18 +923,19 @@ async def recibir_nombre_modificar(update: Update, context: ContextTypes.DEFAULT
 
     mensaje = "👥 CLIENTES ENCONTRADOS\n\n"
 
-    for _, fila in resultados.iterrows():
+    for indice, fila in resultados.iterrows():
 
         mensaje += (
             f"🧾 {fila['Factura']}\n"
             f"👤 {fila['Cliente']}\n"
-            f"📺 {fila['Servicio']}\n\n"
+            f"📺 {fila['Servicio']}\n"
+            f"📅 Inicio: {fila['Fecha_Emision'].date()}\n\n"
         )
 
         teclado.append([
             InlineKeyboardButton(
-                f"Seleccionar {fila['Factura']}",
-                callback_data=f"modificar_{fila['Factura']}"
+                f"{fila['Factura']} | {fila['Servicio']}",
+                callback_data=f"modificar_indice_{indice}"
             )
         ])
 
@@ -939,26 +946,49 @@ async def recibir_nombre_modificar(update: Update, context: ContextTypes.DEFAULT
 
     return MOD_FACTURA
 
-async def seleccionar_factura_modificar(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def seleccionar_factura_modificar(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE
+):
 
     query = update.callback_query
-
     await query.answer()
 
-    factura = query.data.replace(
-        "modificar_",
-        ""
-    )
+    try:
 
-    datos_cliente["factura_modificar"] = factura
+        indice = int(
+            query.data.replace(
+                "modificar_indice_",
+                ""
+            )
+        )
+
+    except ValueError:
+
+        await query.message.reply_text(
+            "❌ No fue posible seleccionar el cliente."
+        )
+
+        return ConversationHandler.END
 
     df = leer_datos()
 
-    fila = df[df["Factura"] == factura].iloc[0]
+    if indice not in df.index:
+
+        await query.message.reply_text(
+            "❌ El cliente seleccionado ya no existe."
+        )
+
+        return ConversationHandler.END
+
+    fila = df.loc[indice]
+
+    datos_cliente["indice_modificar"] = indice
+    datos_cliente["factura_modificar"] = str(fila["Factura"])
 
     mensaje = (
 
-        "📋 CLIENTE\n\n"
+        "📋 CLIENTE SELECCIONADO\n\n"
 
         f"🧾 {fila['Factura']}\n"
         f"👤 {fila['Cliente']}\n"
@@ -968,7 +998,6 @@ async def seleccionar_factura_modificar(update: Update, context: ContextTypes.DE
         f"⏳ {fila['Dias']} días\n\n"
 
         "¿Qué deseas modificar?"
-
     )
 
     teclado = [
@@ -1018,11 +1047,8 @@ async def seleccionar_factura_modificar(update: Update, context: ContextTypes.DE
     ]
 
     await query.message.reply_text(
-
         mensaje,
-
         reply_markup=InlineKeyboardMarkup(teclado)
-
     )
 
     return MOD_ACCION
@@ -1085,7 +1111,7 @@ async def seleccionar_accion_modificar(
 
     elif accion == "accion_cancelar":
 
-        datos_cliente.pop("factura_modificar", None)
+        datos_cliente.clear()
 
         await query.message.reply_text(
             "❌ Modificación cancelada."
@@ -1104,12 +1130,13 @@ async def guardar_modificacion(
     valor
 ):
 
+    indice = datos_cliente.get("indice_modificar")
     factura = datos_cliente.get("factura_modificar")
 
-    if not factura:
+    if indice is None:
 
         await update.message.reply_text(
-            "❌ No hay una factura seleccionada.\n"
+            "❌ No hay un cliente seleccionado.\n"
             "Inicia nuevamente con /start."
         )
 
@@ -1117,23 +1144,19 @@ async def guardar_modificacion(
 
     df = leer_datos()
 
-    indice = df[df["Factura"] == factura].index
-
-    if len(indice) == 0:
+    if indice not in df.index:
 
         await update.message.reply_text(
-            "❌ La factura ya no existe."
+            "❌ El cliente seleccionado ya no existe."
         )
 
-        datos_cliente.pop("factura_modificar", None)
+        datos_cliente.clear()
 
         return ConversationHandler.END
 
-    fila = indice[0]
+    # Modificar exactamente la fila seleccionada
+    df.at[indice, columna] = valor
 
-    df.at[fila, columna] = valor
-
-    # Guardar únicamente las columnas originales.
     df_guardar = df[[
         "Factura",
         "Cliente",
@@ -1143,7 +1166,6 @@ async def guardar_modificacion(
         "Cuenta"
     ]].copy()
 
-    # Guardar fechas con formato limpio.
     df_guardar["Fecha_Emision"] = pd.to_datetime(
         df_guardar["Fecha_Emision"],
         errors="coerce"
@@ -1157,10 +1179,12 @@ async def guardar_modificacion(
 
     await update.message.reply_text(
         "✅ Cliente modificado correctamente\n\n"
-        f"🧾 Factura: {factura}"
+        f"🧾 Factura: {factura}\n"
+        f"✏️ Campo modificado: {columna}\n"
+        f"🆕 Nuevo valor: {valor}"
     )
 
-    datos_cliente.pop("factura_modificar", None)
+    datos_cliente.clear()
 
     return ConversationHandler.END
 
@@ -1583,7 +1607,7 @@ conv_modificar = ConversationHandler(
 
             CallbackQueryHandler(
                 seleccionar_factura_modificar,
-                pattern="^modificar_"
+                pattern="^modificar_indice_"
             )
 
         ],
