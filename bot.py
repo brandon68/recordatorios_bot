@@ -26,7 +26,7 @@ nest_asyncio.apply()
 # CONFIG
 # =========================
 
-TOKEN = "7119344534:AAFJP-0BM9OvIoo_bw2RDB5nfm0HVGBKKxQ"
+TOKEN = "7119344534:AAFqQFvCEvroXR2F_zHmYhPGlt7PdeMVqH8"
 CHAT_ID = 5504611412
 CSV_FILE = "/data/clientes.csv"
 
