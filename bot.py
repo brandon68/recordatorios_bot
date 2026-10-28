@@ -1024,34 +1024,47 @@ async def confirmar_cliente(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
         return ConversationHandler.END
+
+
 # =========================
-# ELIMINAR
+# ELIMINAR (CLIENTE O STOCK)
 # =========================
 
 async def eliminar(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if not context.args:
-
         await update.message.reply_text(
-            "Usa: /eliminar Fact_001"
+            "Usa:\n"
+            "/eliminar Fact_001 (para clientes)\n"
+            "/eliminar STK_001 (para stock)"
         )
-
         return
 
-    factura = context.args[0]
+    codigo = context.args[0]
 
+    # Si es del stock (empieza con STK)
+    if codigo.upper().startswith("STK"):
+        df_stock = leer_stock()
+        if df_stock.empty:
+            await update.message.reply_text("❌ El archivo de stock está vacío.")
+            return
+
+        nuevo_df_stock = df_stock[df_stock["ID_Stock"] != codigo]
+
+        if len(df_stock) == len(nuevo_df_stock):
+            await update.message.reply_text(f"❌ ID de stock no encontrado: {codigo}")
+            return
+
+        nuevo_df_stock.to_csv(STOCK_CSV, index=False, encoding="utf-8-sig")
+        await update.message.reply_text(f"🗑 **Stock eliminado con éxito:** `{codigo}`", parse_mode="Markdown")
+        return
+
+    # Si es un cliente normal (Factura)
     df = leer_datos()
-
-    nuevo_df = df[
-        df["Factura"] != factura
-    ]
+    nuevo_df = df[df["Factura"] != codigo]
 
     if len(df) == len(nuevo_df):
-
-        await update.message.reply_text(
-            "❌ Factura no encontrada"
-        )
-
+        await update.message.reply_text(f"❌ Factura no encontrada: {codigo}")
         return
 
     nuevo_df = nuevo_df[[
@@ -1070,7 +1083,8 @@ async def eliminar(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
     await update.message.reply_text(
-        f"🗑 Eliminado: {factura}"
+        f"🗑 **Cliente eliminado:** {codigo}",
+        parse_mode="Markdown"
     )
 
 # =========================
