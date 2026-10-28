@@ -131,6 +131,190 @@ def leer_datos():
     return df
 
 # =========================
+# CONFIGURACIÓN Y ARCHIVO DE STOCK
+# =========================
+
+STOCK_CSV = "/data/stock.csv"
+
+# Crear stock.csv si no existe
+if not os.path.exists(STOCK_CSV):
+    with open(STOCK_CSV, mode="w", newline="", encoding="utf-8-sig") as file:
+        writer = csv.writer(file)
+        writer.writerow([
+            "ID_Stock",
+            "Servicio",
+            "Cuenta",
+            "Estado",
+            "Fecha_Ingreso"
+        ])
+
+# Leer stock
+def leer_stock():
+    if not os.path.exists(STOCK_CSV):
+        return pd.DataFrame()
+    df = pd.read_csv(STOCK_CSV)
+    if df.empty:
+        return df
+    df.columns = [str(col).strip() for col in df.columns]
+    return df
+
+# Generar ID de Stock incremental
+def generar_id_stock():
+    df = leer_stock()
+    if df.empty or "ID_Stock" not in df.columns:
+        return "STK_001"
+    
+    numeros = []
+    for item in df["ID_Stock"]:
+        try:
+            num = int(str(item).replace("STK_", ""))
+            numeros.append(num)
+        except:
+            pass
+            
+    if not numeros:
+        return "STK_001"
+        
+    nuevo = max(numeros) + 1
+    return f"STK_{str(nuevo).zfill(3)}"
+
+# =========================
+# COMANDOS DE STOCK
+# =========================
+
+# 1. Ver Stock disponible: /stock
+async def ver_stock(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    df = leer_stock()
+    
+    if df.empty:
+        await update.message.reply_text("📦 El stock está completamente vacío.")
+        return
+
+    disponibles = df[df["Estado"] == "Disponible"]
+    
+    if disponibles.empty:
+        await update.message.reply_text("❌ No hay cuentas disponibles para vender.")
+        return
+
+    mensaje = "📦 **STOCK DISPONIBLE PARA VENTA**\n\n"
+    
+    for _, row in disponibles.iterrows():
+        mensaje += (
+            f"🆔 `{row['ID_Stock']}`\n"
+            f"📺 **Servicio:** {row['Servicio']}\n"
+            f"🔑 **Cuenta/Clave:** `{row['Cuenta']}`\n"
+            f"📅 **Ingreso:** {row['Fecha_Ingreso']}\n"
+            f"-----------------------------\n"
+        )
+
+    await update.message.reply_text(mensaje, parse_mode="Markdown")
+
+# 2. Agregar a Stock: /addstock Servicio | Correo / Contraseña
+async def add_stock(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    try:
+        texto = " ".join(context.args)
+        partes = [x.strip() for x in texto.split("|")]
+
+        if len(partes) != 2:
+            await update.message.reply_text(
+                "⚠️ **Formato incorrecto:**\n"
+                "Usa:\n`/addstock Servicio | Correo / Contraseña`\n\n"
+                "**Ejemplo:**\n"
+                "`/addstock Netflix | correo@gmail.com / clave123`"
+            )
+            return
+
+        servicio, cuenta = partes
+        id_stock = generar_id_stock()
+        fecha_ingreso = datetime.now(ZoneInfo("America/Mexico_City")).strftime("%Y-%m-%d")
+
+        with open(STOCK_CSV, mode="a", newline="", encoding="utf-8-sig") as file:
+            writer = csv.writer(file)
+            writer.writerow([
+                id_stock,
+                servicio,
+                cuenta,
+                "Disponible",
+                fecha_ingreso
+            ])
+
+        await update.message.reply_text(
+            f"✅ **Stock guardado correctamente**\n\n"
+            f"🆔 `{id_stock}`\n"
+            f"📺 **Servicio:** {servicio}\n"
+            f"🔑 **Cuenta:** {cuenta}\n"
+            f"📅 **Fecha:** {fecha_ingreso}",
+            parse_mode="Markdown"
+        )
+
+    except Exception as e:
+        await update.message.reply_text(f"❌ Error al agregar a stock: {e}")
+
+# 3. Vender Stock: /vender ID_Stock | Cliente | Días
+async def vender_stock(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    try:
+        texto = " ".join(context.args)
+        partes = [x.strip() for x in texto.split("|")]
+
+        if len(partes) != 3:
+            await update.message.reply_text(
+                "⚠️ **Formato incorrecto:**\n"
+                "Usa:\n`/vender ID_Stock | Nombre Cliente | Días`\n\n"
+                "**Ejemplo:**\n"
+                "`/vender STK_001 | Juan Pérez | 30`"
+            )
+            return
+
+        id_stock, cliente, dias = partes
+        dias = int(dias)
+
+        df_stock = leer_stock()
+        
+        # Buscar en stock que esté disponible
+        indice = df_stock[
+            (df_stock["ID_Stock"] == id_stock) & 
+            (df_stock["Estado"] == "Disponible")
+        ].index
+
+        if len(indice) == 0:
+            await update.message.reply_text("❌ El ID de stock no existe o ya fue vendido.")
+            return
+
+        i = indice[0]
+        row_stock = df_stock.loc[i]
+
+        # A. Registrar en clientes.csv
+        factura = generar_factura()
+        fecha_hoy = datetime.now(ZoneInfo("America/Mexico_City")).strftime("%Y-%m-%d")
+
+        guardar_cliente(
+            factura=factura,
+            nombre=cliente,
+            fecha=fecha_hoy,
+            dias=dias,
+            servicio=row_stock["Servicio"],
+            cuenta=row_stock["Cuenta"]
+        )
+
+        # B. Marcar como vendido en stock.csv
+        df_stock.at[i, "Estado"] = "Vendido"
+        df_stock.to_csv(STOCK_CSV, index=False, encoding="utf-8-sig")
+
+        await update.message.reply_text(
+            f"🎉 **¡VENTA REGISTRADA EXITOSAMENTE!**\n\n"
+            f"🧾 **Factura:** {factura}\n"
+            f"👤 **Cliente:** {cliente}\n"
+            f"📺 **Servicio:** {row_stock['Servicio']}\n"
+            f"🔑 **Cuenta/Clave:** `{row_stock['Cuenta']}`\n"
+            f"⏳ **Días contratados:** {dias}\n"
+            f"📅 **Inicio:** {fecha_hoy}",
+            parse_mode="Markdown"
+        )
+
+    except Exception as e:
+        await update.message.reply_text(f"❌ Error al procesar la venta: {e}")
+
+# =========================
 # GENERAR FACTURA
 # =========================
 
@@ -1737,6 +1921,9 @@ conv_modificar = ConversationHandler(
 
 
 app.add_handler(CommandHandler("start", start))
+app.add_handler(CommandHandler("stock", ver_stock))
+app.add_handler(CommandHandler("addstock", add_stock))
+app.add_handler(CommandHandler("vender", vender_stock))
 app.add_handler(CommandHandler("todo", todo))
 app.add_handler(CommandHandler("ver", ver))
 app.add_handler(CommandHandler("vencidas", vencidas))
