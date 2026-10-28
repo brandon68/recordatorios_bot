@@ -338,7 +338,7 @@ async def iniciar_agregar_stock(update: Update, context: ContextTypes.DEFAULT_TY
 async def recibir_servicio_stock(update: Update, context: ContextTypes.DEFAULT_TYPE):
     datos_stock["servicio"] = update.message.text.strip()
 
-    await query_msg = await update.message.reply_text(
+    query_msg = await update.message.reply_text(
         "🔑 **Paso 2/2:** Pega tu lista de cuentas.\n\n"
         "Puedes mandar **muchas cuentas línea por línea**:\n\n"
         "Ejemplo:\n"
