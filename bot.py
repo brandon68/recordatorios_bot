@@ -56,8 +56,10 @@ CSV_FILE = "/data/clientes.csv"
     STOCK_CUENTAS
 
 ) = range(16)
+
 # Datos temporales de la conversación
 datos_cliente = {}
+datos_stock = {}
 
 # =========================
 # CREAR CSV SI NO EXISTE
@@ -319,6 +321,76 @@ async def vender_stock(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(f"❌ Error al procesar la venta: {e}")
 
 # =========================
+# FLUJO INTERACTIVO DE STOCK MASIVO
+# =========================
+
+async def iniciar_agregar_stock(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    await query.message.reply_text(
+        "📺 **Paso 1/2:** Escribe el nombre del servicio para estas cuentas:\n\n"
+        "Ejemplo:\n"
+        "Netflix"
+    )
+    return STOCK_SERVICIO
+
+async def recibir_servicio_stock(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    datos_stock["servicio"] = update.message.text.strip()
+
+    await query_msg = await update.message.reply_text(
+        "🔑 **Paso 2/2:** Pega tu lista de cuentas.\n\n"
+        "Puedes mandar **muchas cuentas línea por línea**:\n\n"
+        "Ejemplo:\n"
+        "`alejandra.muro1930@gmail.com:Neutron17`\n"
+        "`andresjuarez901@gmail.com:andresjuarezsan`",
+        parse_mode="Markdown"
+    )
+    return STOCK_CUENTAS
+
+async def recibir_cuentas_stock(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    texto_largo = update.message.text
+    servicio = datos_stock.get("servicio", "General")
+    
+    lineas = texto_largo.split("\n")
+    agregadas = 0
+    errores = 0
+
+    fecha_ingreso = datetime.now(ZoneInfo("America/Mexico_City")).strftime("%Y-%m-%d")
+
+    for linea in lineas:
+        linea = linea.strip()
+        if not linea:
+            continue
+
+        id_stock = generar_id_stock()
+        
+        try:
+            with open(STOCK_CSV, mode="a", newline="", encoding="utf-8-sig") as file:
+                writer = csv.writer(file)
+                writer.writerow([
+                    id_stock,
+                    servicio,
+                    linea,
+                    "Disponible",
+                    fecha_ingreso
+                ])
+            agregadas += 1
+        except Exception:
+            errores += 1
+
+    await update.message.reply_text(
+        f"✅ **¡Proceso finalizado!**\n\n"
+        f"📺 **Servicio:** {servicio}\n"
+        f"📦 Cuentas agregadas correctamente: **{agregadas}**\n"
+        (f"⚠️ Hubo errores en: {errores}\n" if errores > 0 else "") +
+        f"\nYa puedes verlas usando el botón de **Ver Stock Disponible**."
+    )
+
+    datos_stock.clear()
+    return ConversationHandler.END
+
+# =========================
 # GENERAR FACTURA
 # =========================
 
@@ -354,7 +426,7 @@ def generar_factura():
 
 def guardar_cliente(
     factura,
-    
+    nombre,
     fecha,
     dias,
     servicio,
@@ -394,43 +466,53 @@ async def id(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     teclado = [
+
         [
             InlineKeyboardButton("➕ Agregar Cliente", callback_data="menu_agregar")
         ],
+
         [
             InlineKeyboardButton("✏️ Modificar Cliente", callback_data="menu_modificar")
         ],
+
         [
             InlineKeyboardButton("🗑 Eliminar Cliente", callback_data="menu_eliminar")
         ],
+
         [
             InlineKeyboardButton("🔍 Buscar Cliente", callback_data="menu_buscar")
         ],
-        # =========================
-        # NUEVOS BOTONES DE STOCK
-        # =========================
+
         [
             InlineKeyboardButton("📦 Ver Stock Disponible", callback_data="menu_ver_stock")
         ],
+
         [
             InlineKeyboardButton("➕ Agregar al Stock", callback_data="menu_add_stock")
         ],
-        # =========================
+
         [
             InlineKeyboardButton("📅 Ver Hoy", callback_data="ver_hoy")
         ],
+
         [
             InlineKeyboardButton("❌ Vencidas", callback_data="ver_vencidas")
         ],
+
         [
             InlineKeyboardButton("📊 Resumen", callback_data="resumen")
         ]
+
     ]
 
     await update.message.reply_text(
+
         "🤖 BOT RECORDATORIOS Y STOCK\n\n"
+
         "Selecciona una opción:",
+
         reply_markup=InlineKeyboardMarkup(teclado)
+
     )
 
 # =========================
@@ -1642,10 +1724,6 @@ async def botones(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         return
 
-    # =====================
-    # NUEVOS BOTONES DE STOCK (AQUÍ VAN)
-    # =====================
-
     if opcion == "menu_ver_stock":
         df = leer_stock()
         if df.empty:
@@ -1670,87 +1748,10 @@ async def botones(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     if opcion == "menu_add_stock":
-
         await query.message.reply_text(
             "📺 Escribe el nombre del servicio para las cuentas:"
         )
-
         return STOCK_SERVICIO
-
-
-
-    # =========================
-# FLUJO INTERACTIVO DE STOCK MASIVO
-# =========================
-
-datos_stock = {}
-
-async def iniciar_agregar_stock(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-
-    await query.message.reply_text(
-        "📺 **Paso 1/2:** Escribe el nombre del servicio para estas cuentas:\n\n"
-        "Ejemplo:\n"
-        "Netflix"
-    )
-    return STOCK_SERVICIO
-
-async def recibir_servicio_stock(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    datos_stock["servicio"] = update.message.text.strip()
-
-    await update.message.reply_text(
-        "🔑 **Paso 2/2:** Pega tu lista de cuentas.\n\n"
-        "Puedes mandar **muchas cuentas línea por línea**:\n\n"
-        "Ejemplo:\n"
-        "`alejandra.muro1930@gmail.com:Neutron17`\n"
-        "`andresjuarez901@gmail.com:andresjuarezsan`",
-        parse_mode="Markdown"
-    )
-    return STOCK_CUENTAS
-
-async def recibir_cuentas_stock(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    texto_largo = update.message.text
-    servicio = datos_stock.get("servicio", "General")
-    
-    lineas = texto_largo.split("\n")
-    agregadas = 0
-    errores = 0
-
-    fecha_ingreso = datetime.now(ZoneInfo("America/Mexico_City")).strftime("%Y-%m-%d")
-
-    for linea in lineas:
-        linea = linea.strip()
-        if not linea:
-            continue
-
-        id_stock = generar_id_stock()
-        
-        try:
-            with open(STOCK_CSV, mode="a", newline="", encoding="utf-8-sig") as file:
-                writer = csv.writer(file)
-                writer.writerow([
-                    id_stock,
-                    servicio,
-                    linea,
-                    "Disponible",
-                    fecha_ingreso
-                ])
-            agregadas += 1
-        except Exception:
-            errores += 1
-
-    await update.message.reply_text(
-        f"✅ **¡Proceso finalizado!**\n\n"
-        f"📺 **Servicio:** {servicio}\n"
-        f"📦 Cuentas agregadas correctamente: **{agregadas}**\n"
-        (f"⚠️ Hubo errores en: {errores}\n" if errores > 0 else "") +
-        f"\nYa puedes verlas usando el botón de **Ver Stock Disponible**."
-    )
-
-    datos_stock.clear()
-    return ConversationHandler.END
-    # =====================
 
     df = leer_datos()
 
@@ -2031,23 +2032,6 @@ conv_modificar = ConversationHandler(
     allow_reentry=True
 )
 
-
-app.add_handler(CommandHandler("start", start))
-app.add_handler(CommandHandler("stock", ver_stock))
-app.add_handler(CommandHandler("addstock", add_stock))
-app.add_handler(CommandHandler("vender", vender_stock))
-app.add_handler(CommandHandler("todo", todo))
-app.add_handler(CommandHandler("ver", ver))
-app.add_handler(CommandHandler("vencidas", vencidas))
-app.add_handler(CommandHandler("buscar", buscar))
-app.add_handler(CommandHandler("tipo", tipo))
-app.add_handler(CommandHandler("cuentas", cuentas))
-app.add_handler(CommandHandler("agregar", agregar))
-app.add_handler(CommandHandler("eliminar", eliminar))
-app.add_handler(CommandHandler("modificar", modificar))
-app.add_handler(CommandHandler("id", id))
-
-app.add_handler(conv_agregar)
 conv_stock = ConversationHandler(
     entry_points=[
         CallbackQueryHandler(
@@ -2071,7 +2055,26 @@ conv_stock = ConversationHandler(
     },
     fallbacks=[]
 )
+
+app.add_handler(CommandHandler("start", start))
+app.add_handler(CommandHandler("stock", ver_stock))
+app.add_handler(CommandHandler("addstock", add_stock))
+app.add_handler(CommandHandler("vender", vender_stock))
+app.add_handler(CommandHandler("todo", todo))
+app.add_handler(CommandHandler("ver", ver))
+app.add_handler(CommandHandler("vencidas", vencidas))
+app.add_handler(CommandHandler("buscar", buscar))
+app.add_handler(CommandHandler("tipo", tipo))
+app.add_handler(CommandHandler("cuentas", cuentas))
+app.add_handler(CommandHandler("agregar", agregar))
+app.add_handler(CommandHandler("eliminar", eliminar))
+app.add_handler(CommandHandler("modificar", modificar))
+app.add_handler(CommandHandler("id", id))
+
+app.add_handler(conv_agregar)
 app.add_handler(conv_modificar)
+app.add_handler(conv_stock)
+
 app.add_handler(
     CallbackQueryHandler(
         botones
@@ -2079,7 +2082,6 @@ app.add_handler(
 )
 
 app.add_handler(CommandHandler("probar", probar))
-app.add_handler(conv_stock)
 
 print("✅ Bot corriendo...")
 app.run_polling()
