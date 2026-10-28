@@ -1741,16 +1741,30 @@ async def botones(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await query.edit_message_text("❌ No hay cuentas disponibles para vender.")
             return
 
-        mensaje = "📦 **STOCK DISPONIBLE PARA VENTA**\n\n"
+        # Responder el primer mensaje al usuario
+        await query.message.reply_text("📦 **STOCK DISPONIBLE PARA VENTA** 📦\n")
+        
+        mensaje = ""
         for _, row in disponibles.iterrows():
-            mensaje += (
+            texto_item = (
                 f"🆔 `{row['ID_Stock']}`\n"
                 f"📺 **Servicio:** {row['Servicio']}\n"
                 f"🔑 **Cuenta/Clave:** `{row['Cuenta']}`\n"
                 f"📅 **Ingreso:** {row['Fecha_Ingreso']}\n"
                 f"-----------------------------\n"
             )
-        await query.edit_message_text(mensaje, parse_mode="Markdown")
+            
+            # Si el bloque actual se pasa de 3500 caracteres, lo envía y empieza otro
+            if len(mensaje) + len(texto_item) > 3500:
+                await query.message.reply_text(mensaje, parse_mode="Markdown")
+                mensaje = ""
+                
+            mensaje += texto_item
+
+        # Enviar el resto que haya quedado pendiente
+        if mensaje:
+            await query.message.reply_text(mensaje, parse_mode="Markdown")
+            
         return
 
     if opcion == "menu_add_stock":
