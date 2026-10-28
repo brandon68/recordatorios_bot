@@ -379,13 +379,19 @@ async def recibir_cuentas_stock(update: Update, context: ContextTypes.DEFAULT_TY
         except Exception:
             errores += 1
 
-    await update.message.reply_text(
+    # Mensaje de respuesta limpio sin errores de sintaxis
+    mensaje_final = (
         f"✅ **¡Proceso finalizado!**\n\n"
         f"📺 **Servicio:** {servicio}\n"
         f"📦 Cuentas agregadas correctamente: **{agregadas}**\n"
-        (f"⚠️ Hubo errores en: {errores}\n" if errores > 0 else "") +
-        f"\nYa puedes verlas usando el botón de **Ver Stock Disponible**."
     )
+    
+    if errores > 0:
+        mensaje_final += f"⚠️ Hubo errores en: {errores}\n"
+        
+    mensaje_final += "\nYa puedes verlas usando el botón de **Ver Stock Disponible**."
+
+    await update.message.reply_text(mensaje_final, parse_mode="Markdown")
 
     datos_stock.clear()
     return ConversationHandler.END
