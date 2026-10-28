@@ -1741,29 +1741,57 @@ async def botones(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await query.edit_message_text("❌ No hay cuentas disponibles para vender.")
             return
 
-        # Responder el primer mensaje al usuario
-        await query.message.reply_text("📦 **STOCK DISPONIBLE PARA VENTA** 📦\n")
+        # Obtener la lista de servicios únicos que tienen stock disponible
+        servicios_unicos = disponibles["Servicio"].dropna().unique()
+
+        teclado = []
+        for serv in servicios_unicos:
+            # Contar cuántas cuentas hay de ese servicio
+            cantidad = len(disponibles[disponibles["Servicio"] == serv])
+            teclado.append([
+                InlineKeyboardButton(
+                    f"📺 {serv} ({cantidad} disponibles)",
+                    callback_data=f"stock_serv_{serv}"
+                )
+            ])
+
+        await query.edit_message_text(
+            "📦 **SELECCIONA EL SERVICIO**\n\n"
+            "Elige qué tipo de cuenta deseas consultar:",
+            reply_markup=InlineKeyboardMarkup(teclado),
+            parse_mode="Markdown"
+        )
+        return
+
+    # Manejar la selección del servicio específico
+    if opcion.startswith("stock_serv_"):
+        servicio_elegido = opcion.replace("stock_serv_", "")
         
-        mensaje = ""
+        df = leer_stock()
+        disponibles = df[(df["Estado"] == "Disponible") & (df["Servicio"].astype(str).str.lower() == servicio_elegido.lower())]
+
+        if disponibles.empty:
+            await query.edit_message_text(f"❌ No hay cuentas disponibles para {servicio_elegido}.")
+            return
+
+        mensaje = f"📦 **STOCK DE: {servicio_elegido.upper()}** 📦\n\n"
+        
         for _, row in disponibles.iterrows():
             texto_item = (
                 f"🆔 `{row['ID_Stock']}`\n"
-                f"📺 **Servicio:** {row['Servicio']}\n"
                 f"🔑 **Cuenta/Clave:** `{row['Cuenta']}`\n"
                 f"📅 **Ingreso:** {row['Fecha_Ingreso']}\n"
                 f"-----------------------------\n"
             )
             
-            # Si el bloque actual se pasa de 3500 caracteres, lo envía y empieza otro
             if len(mensaje) + len(texto_item) > 3500:
                 await query.message.reply_text(mensaje, parse_mode="Markdown")
                 mensaje = ""
                 
             mensaje += texto_item
 
-        # Enviar el resto que haya quedado pendiente
         if mensaje:
-            await query.message.reply_text(mensaje, parse_mode="Markdown")
+            await query.edit_message_text(mensaje, parse_mode="Markdown")
             
         return
 
