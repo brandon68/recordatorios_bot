@@ -390,45 +390,43 @@ async def id(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     teclado = [
-
         [
             InlineKeyboardButton("➕ Agregar Cliente", callback_data="menu_agregar")
         ],
-
         [
             InlineKeyboardButton("✏️ Modificar Cliente", callback_data="menu_modificar")
         ],
-
         [
             InlineKeyboardButton("🗑 Eliminar Cliente", callback_data="menu_eliminar")
         ],
-
         [
             InlineKeyboardButton("🔍 Buscar Cliente", callback_data="menu_buscar")
         ],
-
+        # =========================
+        # NUEVOS BOTONES DE STOCK
+        # =========================
+        [
+            InlineKeyboardButton("📦 Ver Stock Disponible", callback_data="menu_ver_stock")
+        ],
+        [
+            InlineKeyboardButton("➕ Agregar al Stock", callback_data="menu_add_stock")
+        ],
+        # =========================
         [
             InlineKeyboardButton("📅 Ver Hoy", callback_data="ver_hoy")
         ],
-
         [
             InlineKeyboardButton("❌ Vencidas", callback_data="ver_vencidas")
         ],
-
         [
             InlineKeyboardButton("📊 Resumen", callback_data="resumen")
         ]
-
     ]
 
     await update.message.reply_text(
-
-        "🤖 BOT RECORDATORIOS\n\n"
-
+        "🤖 BOT RECORDATORIOS Y STOCK\n\n"
         "Selecciona una opción:",
-
         reply_markup=InlineKeyboardMarkup(teclado)
-
     )
 
 # =========================
