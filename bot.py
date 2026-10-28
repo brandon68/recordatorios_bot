@@ -1638,6 +1638,44 @@ async def botones(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         return
 
+    # =====================
+    # NUEVOS BOTONES DE STOCK (AQUÍ VAN)
+    # =====================
+
+    if opcion == "menu_ver_stock":
+        df = leer_stock()
+        if df.empty:
+            await query.edit_message_text("📦 El stock está completamente vacío.")
+            return
+
+        disponibles = df[df["Estado"] == "Disponible"]
+        if disponibles.empty:
+            await query.edit_message_text("❌ No hay cuentas disponibles para vender.")
+            return
+
+        mensaje = "📦 **STOCK DISPONIBLE PARA VENTA**\n\n"
+        for _, row in disponibles.iterrows():
+            mensaje += (
+                f"🆔 `{row['ID_Stock']}`\n"
+                f"📺 **Servicio:** {row['Servicio']}\n"
+                f"🔑 **Cuenta/Clave:** `{row['Cuenta']}`\n"
+                f"📅 **Ingreso:** {row['Fecha_Ingreso']}\n"
+                f"-----------------------------\n"
+            )
+        await query.edit_message_text(mensaje, parse_mode="Markdown")
+        return
+
+    if opcion == "menu_add_stock":
+        await query.message.reply_text(
+            "➕ **Para agregar stock, usa el comando:**\n\n"
+            "`/addstock Servicio | Correo / Contraseña`\n\n"
+            "Ejemplo:\n"
+            "`/addstock Netflix | correo@gmail.com / clave123`"
+        )
+        return
+
+    # =====================
+
     df = leer_datos()
 
     # =====================
@@ -1932,6 +1970,7 @@ app.add_handler(CommandHandler("agregar", agregar))
 app.add_handler(CommandHandler("eliminar", eliminar))
 app.add_handler(CommandHandler("modificar", modificar))
 app.add_handler(CommandHandler("id", id))
+
 app.add_handler(conv_agregar)
 app.add_handler(conv_modificar)
 app.add_handler(
